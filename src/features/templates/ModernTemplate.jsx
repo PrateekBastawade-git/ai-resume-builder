@@ -1,8 +1,8 @@
 import React from 'react';
-import { Mail, Phone, Globe, Link2, MapPin, Award } from 'lucide-react';
+import { Mail, Phone, Globe, Link2, MapPin, Award, Code } from 'lucide-react';
 
 export const ModernTemplate = ({ data }) => {
-  const { personalInfo = {}, summary = '', experience = [], education = [], skills = [], certifications = [] } = data;
+  const { personalInfo = {}, summary = '', experience = [], education = [], skills = [], certifications = [], projects = [], languages = [], links = [] } = data;
 
   const renderDescriptionBullets = (desc) => {
     if (!desc) return null;
@@ -92,8 +92,30 @@ export const ModernTemplate = ({ data }) => {
             </div>
           )}
 
-          {/* Project Summary */}
-          {personalInfo.projectSummary && (
+          {/* Projects Section */}
+          {projects.length > 0 ? (
+            <div className="pdf-section space-y-4">
+              <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-900 border-l-4 border-primary-500 pl-2.5">
+                Projects
+              </h2>
+              <div className="space-y-4">
+                {projects.map((proj, idx) => (
+                  <div key={proj.id || idx} className="pdf-item space-y-1">
+                    <div className="flex justify-between items-baseline text-xs font-bold text-slate-900">
+                      <span>{proj.title || 'Project Name'}{proj.role ? ` | ${proj.role}` : ''}</span>
+                      <span className="text-[10px] text-primary-600 font-semibold">{proj.duration}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                      {proj.technologies && <span><strong className="text-slate-700">Tech:</strong> {proj.technologies}</span>}
+                      {proj.github && <a href={proj.github} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">[GitHub]</a>}
+                      {proj.live && <a href={proj.live} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">[Live]</a>}
+                    </div>
+                    {renderDescriptionBullets(proj.description)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : personalInfo.projectSummary ? (
             <div className="pdf-section space-y-2">
               <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-900 border-l-4 border-primary-500 pl-2.5">
                 Key Projects
@@ -102,7 +124,7 @@ export const ModernTemplate = ({ data }) => {
                 {personalInfo.projectSummary}
               </p>
             </div>
-          )}
+          ) : null}
 
           {/* Education */}
           {education.length > 0 && (
@@ -148,6 +170,12 @@ export const ModernTemplate = ({ data }) => {
                   <span>{personalInfo.phone}</span>
                 </div>
               )}
+              {personalInfo.address && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-3.5 h-3.5 text-primary-500 flex-shrink-0" />
+                  <span className="truncate">{personalInfo.address}</span>
+                </div>
+              )}
               {personalInfo.website && (
                 <div className="flex items-center gap-2">
                   <Globe className="w-3.5 h-3.5 text-primary-500 flex-shrink-0" />
@@ -164,6 +192,26 @@ export const ModernTemplate = ({ data }) => {
                   </a>
                 </div>
               )}
+              {personalInfo.github && (
+                <div className="flex items-center gap-2">
+                  <Code className="w-3.5 h-3.5 text-primary-500 flex-shrink-0" />
+                  <a href={personalInfo.github} target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 truncate transition">
+                    GitHub
+                  </a>
+                </div>
+              )}
+              {links.map((linkItem, idx) => {
+                const label = typeof linkItem === 'string' ? linkItem : linkItem.label || linkItem.url;
+                const url = typeof linkItem === 'string' ? linkItem : linkItem.url;
+                return (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Link2 className="w-3.5 h-3.5 text-primary-500 flex-shrink-0" />
+                    <a href={url} target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 truncate transition">
+                      {label}
+                    </a>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -200,6 +248,25 @@ export const ModernTemplate = ({ data }) => {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Languages */}
+          {languages.length > 0 && (
+            <div className="pdf-section space-y-3">
+              <h3 className="text-xs font-extrabold uppercase tracking-widest text-slate-900">
+                Languages
+              </h3>
+              <div className="flex flex-wrap gap-1.5">
+                {languages.map((lang, index) => (
+                  <span
+                    key={index}
+                    className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white border border-slate-200 text-slate-700 shadow-sm"
+                  >
+                    {lang}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 

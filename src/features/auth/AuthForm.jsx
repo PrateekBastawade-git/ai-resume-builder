@@ -201,22 +201,6 @@ export const AuthForm = () => {
             </div>
           )}
 
-          {/* Sandbox Bypass Option */}
-          <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-            <span className="flex-shrink mx-4 text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Or</span>
-            <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleSandboxEnter}
-            className="w-full flex items-center justify-center gap-1.5 border-dashed"
-          >
-            Continue in Sandbox Mode
-            <ArrowRight className="w-4 h-4" />
-          </Button>
         </div>
       </motion.div>
     </div>

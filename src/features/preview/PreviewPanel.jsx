@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useResume } from '../../context/ResumeContext';
 import { CorporateTemplate } from '../templates/CorporateTemplate';
 import { ModernTemplate } from '../templates/ModernTemplate';
+import { DynamicTemplate } from '../templates/DynamicTemplate';
 import { Button } from '../../components/Button';
 import { Download, ZoomIn, ZoomOut, RotateCcw, Layout } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
@@ -9,37 +10,44 @@ import html2pdf from 'html2pdf.js';
 export const PreviewPanel = () => {
   const { currentResume, updateCurrentResume } = useResume();
   const [zoom, setZoom] = useState(0.85); // Default zoom level
+  const [isExporting, setIsExporting] = useState(false);
 
   if (!currentResume) return null;
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     const element = document.getElementById('resume-pdf-content');
-    if (!element) return;
+    if (!element || isExporting) return;
 
-    // Configuration tailored to prevent bad page breaks
-    const options = {
-      margin: 0,
-      filename: `${currentResume.title || 'resume'}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true, 
-        letterRendering: true,
-        logging: false
-      },
-      jsPDF: { 
-        unit: 'mm', 
-        format: 'a4', 
-        orientation: 'portrait' 
-      },
-      pagebreak: { 
-        mode: ['avoid-all', 'css'],
-        before: '.page-break'
+    setIsExporting(true);
+    try {
+      // Ensure #print-root exists in document.body
+      let printRoot = document.getElementById('print-root');
+      if (!printRoot) {
+        printRoot = document.createElement('div');
+        printRoot.id = 'print-root';
+        document.body.appendChild(printRoot);
       }
-    };
 
-    // Execute html2pdf generation
-    html2pdf().from(element).set(options).save();
+      // Clone the resume element so we can print it without parent scaling/overflow restrictions
+      const clone = element.cloneNode(true);
+      clone.style.transform = 'none';
+      clone.style.margin = '0';
+      clone.style.boxShadow = 'none';
+      clone.style.width = '100%';
+
+      // Populate print root and trigger print
+      printRoot.innerHTML = '';
+      printRoot.appendChild(clone);
+
+      // Brief delay to ensure DOM update before print dialog opens
+      setTimeout(() => {
+        window.print();
+        setIsExporting(false);
+      }, 150);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      setIsExporting(false);
+    }
   };
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.05, 1.2));
@@ -65,6 +73,15 @@ export const PreviewPanel = () => {
           >
             <option value="professional">Corporate Professional</option>
             <option value="modern">Modern Minimalist</option>
+            <option value="Single Column">Single Column</option>
+            <option value="Two Column">Two Column</option>
+            <option value="ATS Optimized">ATS Optimized</option>
+            <option value="Modern Minimal">Modern Minimal</option>
+            <option value="Executive">Executive</option>
+            <option value="Academic">Academic</option>
+            <option value="Creative">Creative</option>
+            <option value="Professional">Professional</option>
+            <option value="Minimal">Minimal</option>
           </select>
         </div>
 
@@ -96,11 +113,12 @@ export const PreviewPanel = () => {
 
           <Button
             onClick={handleDownloadPDF}
+            disabled={isExporting}
             size="sm"
             className="flex items-center gap-1 text-xs shadow-md shadow-primary-500/10"
           >
             <Download className="w-3.5 h-3.5" />
-            Export PDF
+            {isExporting ? 'Exporting...' : 'Export PDF'}
           </Button>
         </div>
       </div>
@@ -120,8 +138,10 @@ export const PreviewPanel = () => {
           <div id="resume-pdf-content" className="bg-white text-black shadow-lg rounded-sm overflow-hidden">
             {currentResume.template === 'professional' ? (
               <CorporateTemplate data={currentResume} />
-            ) : (
+            ) : currentResume.template === 'modern' ? (
               <ModernTemplate data={currentResume} />
+            ) : (
+              <DynamicTemplate data={currentResume} />
             )}
           </div>
         </div>

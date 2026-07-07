@@ -58,3 +58,4 @@ Thumbs.db
 *.local
 coverage/
 .nyc_output/
+db.json

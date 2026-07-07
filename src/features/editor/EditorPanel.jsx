@@ -6,7 +6,7 @@ import { Input, Textarea } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { Modal } from '../../components/Modal';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Plus, Trash2, Sparkles, User, FileText, Briefcase, GraduationCap, Award, Check } from 'lucide-react';
+import { ChevronDown, Plus, Trash2, Sparkles, User, FileText, Briefcase, GraduationCap, Award, Check, Code, Globe, Link } from 'lucide-react';
 
 export const EditorPanel = () => {
   const { currentResume, updateCurrentResume, saveStatus, pushHistorySnapshot } = useResume();
@@ -32,10 +32,11 @@ export const EditorPanel = () => {
 
   const [skillInput, setSkillInput] = useState('');
   const [certInput, setCertInput] = useState('');
+  const [langInput, setLangInput] = useState('');
 
   if (!currentResume) return null;
 
-  const { personalInfo = {}, summary = '', experience = [], education = [], skills = [], certifications = [] } = currentResume;
+  const { personalInfo = {}, summary = '', experience = [], education = [], skills = [], certifications = [], projects = [], languages = [], links = [] } = currentResume;
 
   // Generic updater helpers
   const updatePersonalInfo = (field, value) => {
@@ -238,6 +239,75 @@ export const EditorPanel = () => {
     updateCurrentResume({ certifications: certifications.filter(c => c !== certToDelete) });
   };
 
+  // 6. Projects updates
+  const handleAddProject = () => {
+    const newProj = {
+      id: crypto.randomUUID(),
+      title: '',
+      role: '',
+      technologies: '',
+      description: '',
+      duration: '',
+      github: '',
+      live: ''
+    };
+    updateCurrentResume({ projects: [...projects, newProj] });
+  };
+
+  const handleUpdateProject = (id, field, value) => {
+    const updated = projects.map(proj => {
+      if (proj.id === id) {
+        return { ...proj, [field]: value };
+      }
+      return proj;
+    });
+    updateCurrentResume({ projects: updated });
+  };
+
+  const handleDeleteProject = (id) => {
+    updateCurrentResume({ projects: projects.filter(proj => proj.id !== id) });
+  };
+
+  // 7. Languages tags
+  const handleAddLanguage = (e) => {
+    if (e.key === 'Enter' || e.type === 'blur') {
+      e.preventDefault();
+      const val = langInput.trim();
+      if (val && !languages.includes(val)) {
+        updateCurrentResume({ languages: [...languages, val] });
+        setLangInput('');
+      }
+    }
+  };
+
+  const handleDeleteLanguage = (langToDelete) => {
+    updateCurrentResume({ languages: languages.filter(l => l !== langToDelete) });
+  };
+
+  // 8. Links updates
+  const handleAddLink = () => {
+    const newLink = {
+      id: crypto.randomUUID(),
+      label: '',
+      url: ''
+    };
+    updateCurrentResume({ links: [...links, newLink] });
+  };
+
+  const handleUpdateLink = (id, field, value) => {
+    const updated = links.map(link => {
+      if ((link.id || link.label) === id) {
+        return { ...link, [field]: value };
+      }
+      return link;
+    });
+    updateCurrentResume({ links: updated });
+  };
+
+  const handleDeleteLink = (id) => {
+    updateCurrentResume({ links: links.filter(link => (link.id || link.label) !== id) });
+  };
+
   // Accordion Header component
   const AccordionHeader = ({ id, label, icon: Icon }) => {
     const isOpen = activeSection === id;
@@ -345,6 +415,22 @@ export const EditorPanel = () => {
                     value={personalInfo.linkedin || ''}
                     onChange={(e) => updatePersonalInfo('linkedin', e.target.value)}
                     placeholder="https://linkedin.com/in/janedoe"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="Address / Location"
+                    id="address"
+                    value={personalInfo.address || ''}
+                    onChange={(e) => updatePersonalInfo('address', e.target.value)}
+                    placeholder="San Francisco, CA"
+                  />
+                  <Input
+                    label="GitHub Profile URL"
+                    id="github"
+                    value={personalInfo.github || ''}
+                    onChange={(e) => updatePersonalInfo('github', e.target.value)}
+                    placeholder="https://github.com/janedoe"
                   />
                 </div>
                 <Input
@@ -546,7 +632,102 @@ export const EditorPanel = () => {
         </AnimatePresence>
       </div>
 
-      {/* 4. Education Section */}
+      {/* 4. Projects Section */}
+      <div>
+        <AccordionHeader id="projects" label="Projects" icon={Code} />
+        <AnimatePresence initial={false}>
+          {activeSection === 'projects' && (
+            <motion.div
+              initial={{ height: 0 }}
+              animate={{ height: 'auto' }}
+              exit={{ height: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="overflow-hidden"
+            >
+              <div className="p-5 space-y-6">
+                {projects.map((proj, index) => (
+                  <div
+                    key={proj.id || index}
+                    className="p-5 bg-slate-50/50 dark:bg-slate-800/10 border border-slate-200/60 dark:border-slate-800/60 rounded-xl relative space-y-4"
+                  >
+                    <button
+                      onClick={() => handleDeleteProject(proj.id || index)}
+                      className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition"
+                      title="Delete project"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+
+                    <div className="pr-8 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Project #{index + 1}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Input
+                        label="Project Name *"
+                        value={proj.title || ''}
+                        onChange={(e) => handleUpdateProject(proj.id || index, 'title', e.target.value)}
+                        placeholder="E-Commerce Platform"
+                        required
+                      />
+                      <Input
+                        label="Role / Contribution"
+                        value={proj.role || ''}
+                        onChange={(e) => handleUpdateProject(proj.id || index, 'role', e.target.value)}
+                        placeholder="Lead Developer"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <Input
+                        label="Technologies Used"
+                        value={proj.technologies || ''}
+                        onChange={(e) => handleUpdateProject(proj.id || index, 'technologies', e.target.value)}
+                        placeholder="React, Node.js, MongoDB"
+                      />
+                      <Input
+                        label="Duration / Dates"
+                        value={proj.duration || ''}
+                        onChange={(e) => handleUpdateProject(proj.id || index, 'duration', e.target.value)}
+                        placeholder="3 months"
+                      />
+                      <Input
+                        label="GitHub Link"
+                        value={proj.github || ''}
+                        onChange={(e) => handleUpdateProject(proj.id || index, 'github', e.target.value)}
+                        placeholder="https://github.com/..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold tracking-wide text-slate-600 dark:text-slate-400 mb-1">
+                        Project Description
+                      </label>
+                      <Textarea
+                        value={proj.description || ''}
+                        onChange={(e) => handleUpdateProject(proj.id || index, 'description', e.target.value)}
+                        placeholder="• Built scalable backend API handling 10k requests/sec&#10;• Implemented real-time chat using WebSockets"
+                        rows={4}
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <Button
+                  onClick={handleAddProject}
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-1.5 border-dashed"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Project
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* 5. Education Section */}
       <div>
         <AccordionHeader id="education" label="Education" icon={GraduationCap} />
         <AnimatePresence initial={false}>
@@ -776,6 +957,111 @@ export const EditorPanel = () => {
                   </div>
                 </div>
 
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* 6. Languages Section */}
+      <div>
+        <AccordionHeader id="languages" label="Languages" icon={Globe} />
+        <AnimatePresence initial={false}>
+          {activeSection === 'languages' && (
+            <motion.div
+              initial={{ height: 0 }}
+              animate={{ height: 'auto' }}
+              exit={{ height: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="overflow-hidden"
+            >
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold tracking-wide text-slate-600 dark:text-slate-400 mb-1">
+                    Languages (hit Enter to add)
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg min-h-[46px]">
+                    {languages.map((lang, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-900/30"
+                      >
+                        {lang}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLanguage(lang)}
+                          className="hover:bg-emerald-100 dark:hover:bg-emerald-900 p-0.5 rounded transition"
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      type="text"
+                      value={langInput}
+                      onChange={(e) => setLangInput(e.target.value)}
+                      onKeyDown={handleAddLanguage}
+                      onBlur={handleAddLanguage}
+                      placeholder="Type a language (e.g. Spanish - Fluent)..."
+                      className="flex-1 bg-transparent px-2 py-0.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none min-w-[150px]"
+                    />
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* 7. External Links Section */}
+      <div>
+        <AccordionHeader id="links" label="External Links" icon={Link} />
+        <AnimatePresence initial={false}>
+          {activeSection === 'links' && (
+            <motion.div
+              initial={{ height: 0 }}
+              animate={{ height: 'auto' }}
+              exit={{ height: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="overflow-hidden"
+            >
+              <div className="p-5 space-y-6">
+                {links.map((link, index) => (
+                  <div
+                    key={link.id || index}
+                    className="p-5 bg-slate-50/50 dark:bg-slate-800/10 border border-slate-200/60 dark:border-slate-800/60 rounded-xl relative space-y-4"
+                  >
+                    <button
+                      onClick={() => handleDeleteLink(link.id || link.label || index)}
+                      className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition"
+                      title="Delete link"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Input
+                        label="Label (e.g. GitHub, Portfolio, Dribbble)"
+                        value={link.label || ''}
+                        onChange={(e) => handleUpdateLink(link.id || link.label || index, 'label', e.target.value)}
+                        placeholder="GitHub"
+                      />
+                      <Input
+                        label="URL"
+                        value={link.url || ''}
+                        onChange={(e) => handleUpdateLink(link.id || link.label || index, 'url', e.target.value)}
+                        placeholder="https://..."
+                      />
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  onClick={handleAddLink}
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-1.5 border-dashed"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Link
+                </Button>
               </div>
             </motion.div>
           )}

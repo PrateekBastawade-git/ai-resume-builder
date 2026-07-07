@@ -129,7 +129,21 @@ export const CoverLetterPage = () => {
       }
     };
 
-    html2pdf().from(element).set(options).save();
+    try {
+      const html2pdfLib = typeof html2pdf === 'function' ? html2pdf : (html2pdf.default || html2pdf);
+      html2pdfLib().from(element).set(options).save();
+    } catch (err) {
+      console.warn('Cover letter PDF export error, falling back to print:', err);
+      let printRoot = document.getElementById('print-root');
+      if (!printRoot) {
+        printRoot = document.createElement('div');
+        printRoot.id = 'print-root';
+        document.body.appendChild(printRoot);
+      }
+      printRoot.innerHTML = '';
+      printRoot.appendChild(element);
+      setTimeout(() => window.print(), 150);
+    }
   };
 
   return (

@@ -19,9 +19,8 @@ export const ProtectedRoute = ({ children }) => {
     );
   }
 
-  // If in sandbox mode, anyone can access without logging in.
-  // If not in sandbox mode (i.e. connected to Supabase), we require a user.
-  if (!sandboxMode && !user) {
+  // Require user session to access protected routes
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 

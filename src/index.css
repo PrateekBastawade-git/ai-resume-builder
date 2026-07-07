@@ -108,16 +108,48 @@
 }
 
 /* PDF Export styles to avoid bad page breaks */
+#print-root {
+  display: none;
+}
+
 @media print {
   body {
     background: white !important;
     color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
-  
-  .no-print {
+
+  /* Hide the normal React app completely during print */
+  #root, .no-print {
     display: none !important;
   }
   
+  /* Show only the dedicated print container */
+  #print-root {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+    z-index: 9999 !important;
+  }
+  
+  #print-root > * {
+    width: 100% !important;
+    max-width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    color: black !important;
+  }
+
   .page-break {
     page-break-before: always;
     break-before: page;

@@ -11,16 +11,58 @@ const DEFAULT_RESUME_STATE = {
     title: '',
     email: '',
     phone: '',
+    address: '',
     website: '',
     linkedin: '',
+    github: '',
     photoUrl: '',
     projectSummary: ''
   },
   summary: '',
   experience: [],
+  projects: [],
   education: [],
   skills: [],
-  certifications: []
+  certifications: [],
+  languages: [],
+  links: [],
+  customLayout: null
+};
+
+const tryParse = (val, fallback) => {
+  if (!val) return fallback;
+  if (typeof val === 'string') {
+    try { return JSON.parse(val); } catch { return fallback; }
+  }
+  return val;
+};
+
+const unpackResume = (r) => {
+  if (!r) return null;
+  const pInfoRaw = r.personalInfo || r.personal_info || {};
+  const pInfo = tryParse(pInfoRaw, {});
+  const extra = pInfo._extra || {};
+  const cleaned = {
+    ...DEFAULT_RESUME_STATE,
+    ...r,
+    personalInfo: {
+      ...DEFAULT_RESUME_STATE.personalInfo,
+      ...pInfo
+    },
+    experience: tryParse(r.experience, []),
+    education: tryParse(r.education, []),
+    skills: tryParse(r.skills, []),
+    certifications: tryParse(r.certifications, []),
+    projects: tryParse(r.projects || extra.projects, []),
+    languages: tryParse(r.languages || extra.languages, []),
+    links: tryParse(r.links || extra.links, []),
+    customLayout: tryParse(r.customLayout || extra.customLayout, null)
+  };
+  delete cleaned.personal_info;
+  if (cleaned.personalInfo && cleaned.personalInfo._extra) {
+    delete cleaned.personalInfo._extra;
+  }
+  return cleaned;
 };
 
 export const ResumeProvider = ({ children }) => {
@@ -28,8 +70,8 @@ export const ResumeProvider = ({ children }) => {
   const [resumes, setResumes] = useState([]);
   const [currentResume, setCurrentResume] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
-  const [sandboxMode, setSandboxMode] = useState(checkSandboxMode());
+  const [saveStatus, setSaveStatus] = useState('saved'); // 'saved' | 'saving' | 'error'
+  const [sandboxMode, setSandboxMode] = useState(true);
   
   const supabase = getSupabaseClient();
   const currentResumeRef = useRef(null);
@@ -71,7 +113,7 @@ export const ResumeProvider = ({ children }) => {
         .eq('user_id', userId || user?.id || 'sandbox');
 
       if (error) throw error;
-      setResumes(data || []);
+      setResumes((data || []).map(unpackResume));
     } catch (err) {
       console.error("Error fetching resumes:", err);
     } finally {
@@ -80,14 +122,33 @@ export const ResumeProvider = ({ children }) => {
   };
 
   // Create a new resume
-  const createResume = async (title = 'Untitled Resume', template = 'professional') => {
+  const createResume = async (title = 'Untitled Resume', template = 'professional', initialData = {}) => {
     setSaveStatus('saving');
     try {
       const activeSupabase = getSupabaseClient();
+      const packedPersonalInfo = {
+        ...(initialData.personalInfo || DEFAULT_RESUME_STATE.personalInfo),
+        _extra: {
+          projects: initialData.projects || [],
+          languages: initialData.languages || [],
+          links: initialData.links || [],
+          customLayout: initialData.customLayout || null
+        }
+      };
       const newResume = {
-        ...DEFAULT_RESUME_STATE,
         title,
         template,
+        personal_info: packedPersonalInfo,
+        personalInfo: packedPersonalInfo,
+        summary: initialData.summary || DEFAULT_RESUME_STATE.summary,
+        experience: initialData.experience || DEFAULT_RESUME_STATE.experience,
+        projects: initialData.projects || DEFAULT_RESUME_STATE.projects,
+        education: initialData.education || DEFAULT_RESUME_STATE.education,
+        skills: initialData.skills || DEFAULT_RESUME_STATE.skills,
+        certifications: initialData.certifications || DEFAULT_RESUME_STATE.certifications,
+        languages: initialData.languages || DEFAULT_RESUME_STATE.languages,
+        links: initialData.links || DEFAULT_RESUME_STATE.links,
+        customLayout: initialData.customLayout || null,
         user_id: user?.id || 'sandbox',
       };
 
@@ -99,10 +160,11 @@ export const ResumeProvider = ({ children }) => {
 
       if (error) throw error;
 
-      setResumes(prev => [data, ...prev]);
-      setCurrentResume(data);
+      const unpacked = unpackResume(data);
+      setResumes(prev => [unpacked, ...prev]);
+      setCurrentResume(unpacked);
       setSaveStatus('saved');
-      return data;
+      return unpacked;
     } catch (err) {
       console.error("Error creating resume:", err);
       setSaveStatus('error');
@@ -118,12 +180,31 @@ export const ResumeProvider = ({ children }) => {
       const resumeToCopy = resumes.find(r => r.id === id);
       if (!resumeToCopy) throw new Error("Resume not found");
 
+      const packedPersonalInfo = {
+        ...(resumeToCopy.personalInfo || {}),
+        _extra: {
+          projects: resumeToCopy.projects || [],
+          languages: resumeToCopy.languages || [],
+          links: resumeToCopy.links || [],
+          customLayout: resumeToCopy.customLayout || null
+        }
+      };
+
       const clonedResume = {
-        ...resumeToCopy,
-        id: undefined, // Let db generate a new UUID
         title: `${resumeToCopy.title} (Copy)`,
-        created_at: undefined,
-        updated_at: undefined
+        template: resumeToCopy.template || 'professional',
+        personal_info: packedPersonalInfo,
+        personalInfo: packedPersonalInfo,
+        summary: resumeToCopy.summary || '',
+        experience: resumeToCopy.experience || [],
+        projects: resumeToCopy.projects || [],
+        education: resumeToCopy.education || [],
+        skills: resumeToCopy.skills || [],
+        certifications: resumeToCopy.certifications || [],
+        languages: resumeToCopy.languages || [],
+        links: resumeToCopy.links || [],
+        customLayout: resumeToCopy.customLayout || null,
+        user_id: resumeToCopy.user_id || user?.id || 'sandbox'
       };
 
       const { data, error } = await activeSupabase
@@ -134,17 +215,18 @@ export const ResumeProvider = ({ children }) => {
 
       if (error) throw error;
 
-      setResumes(prev => [data, ...prev]);
+      const unpacked = unpackResume(data);
+      setResumes(prev => [unpacked, ...prev]);
       setSaveStatus('saved');
-      return data;
+      return unpacked;
     } catch (err) {
-      console.error("Error cloning resume:", err);
+      console.error("Error duplicating resume:", err);
       setSaveStatus('error');
       return null;
     }
   };
 
-  // Delete resume
+  // Delete a resume
   const deleteResume = async (id) => {
     try {
       const activeSupabase = getSupabaseClient();
@@ -153,8 +235,7 @@ export const ResumeProvider = ({ children }) => {
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
-
+      if (error && error.code !== 'PGRST116') throw error;
       setResumes(prev => prev.filter(r => r.id !== id));
       if (currentResume?.id === id) {
         setCurrentResume(null);
@@ -185,17 +266,31 @@ export const ResumeProvider = ({ children }) => {
     if (!resume) return;
     try {
       const activeSupabase = getSupabaseClient();
+      const packedPersonalInfo = {
+        ...(resume.personalInfo || {}),
+        _extra: {
+          projects: resume.projects || [],
+          languages: resume.languages || [],
+          links: resume.links || [],
+          customLayout: resume.customLayout || null
+        }
+      };
       const { error } = await activeSupabase
         .from('resumes')
         .update({
           title: resume.title,
           template: resume.template,
-          personal_info: resume.personalInfo,
+          personal_info: packedPersonalInfo,
+          personalInfo: packedPersonalInfo,
           summary: resume.summary,
           experience: resume.experience,
+          projects: resume.projects || [],
           education: resume.education,
           skills: resume.skills,
-          certifications: resume.certifications
+          certifications: resume.certifications,
+          languages: resume.languages || [],
+          links: resume.links || [],
+          customLayout: resume.customLayout || null
         })
         .eq('id', resume.id);
 

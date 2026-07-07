@@ -1,8 +1,8 @@
 import React from 'react';
-import { Mail, Phone, Globe, Link2, MapPin } from 'lucide-react';
+import { Mail, Phone, Globe, Link2, MapPin, Code } from 'lucide-react';
 
 export const CorporateTemplate = ({ data }) => {
-  const { personalInfo = {}, summary = '', experience = [], education = [], skills = [], certifications = [] } = data;
+  const { personalInfo = {}, summary = '', experience = [], education = [], skills = [], certifications = [], projects = [], languages = [], links = [] } = data;
 
   // Split descriptions by newlines to render as bullets
   const renderDescriptionBullets = (desc) => {
@@ -52,6 +52,12 @@ export const CorporateTemplate = ({ data }) => {
               {personalInfo.phone}
             </span>
           )}
+          {personalInfo.address && (
+            <span className="flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5" />
+              {personalInfo.address}
+            </span>
+          )}
           {personalInfo.website && (
             <a href={personalInfo.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-slate-800 transition">
               <Globe className="w-3.5 h-3.5" />
@@ -64,6 +70,22 @@ export const CorporateTemplate = ({ data }) => {
               LinkedIn
             </a>
           )}
+          {personalInfo.github && (
+            <a href={personalInfo.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-slate-800 transition">
+              <Code className="w-3.5 h-3.5" />
+              GitHub
+            </a>
+          )}
+          {links.map((linkItem, idx) => {
+            const label = typeof linkItem === 'string' ? linkItem : linkItem.label || linkItem.url;
+            const url = typeof linkItem === 'string' ? linkItem : linkItem.url;
+            return (
+              <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-slate-800 transition">
+                <Link2 className="w-3.5 h-3.5" />
+                {label}
+              </a>
+            );
+          })}
         </div>
       </div>
 
@@ -108,8 +130,35 @@ export const CorporateTemplate = ({ data }) => {
           </div>
         )}
 
-        {/* Project Summary */}
-        {personalInfo.projectSummary && (
+        {/* Projects Section */}
+        {projects.length > 0 ? (
+          <div className="pdf-section space-y-3">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-950 border-b border-slate-300 pb-1 font-sans">
+              Key Projects
+            </h2>
+            <div className="space-y-4">
+              {projects.map((proj, idx) => (
+                <div key={proj.id || idx} className="pdf-item space-y-1">
+                  <div className="flex justify-between items-baseline font-sans text-xs">
+                    <h3 className="font-bold text-slate-950">
+                      {proj.title || 'Project Name'}
+                      {proj.role && <span className="font-normal text-slate-600"> | {proj.role}</span>}
+                    </h3>
+                    <span className="text-slate-600 font-medium">
+                      {proj.duration}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 font-sans text-[11px] text-slate-600">
+                    {proj.technologies && <span><strong className="text-slate-800">Tech:</strong> {proj.technologies}</span>}
+                    {proj.github && <a href={proj.github} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">[GitHub]</a>}
+                    {proj.live && <a href={proj.live} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">[Live]</a>}
+                  </div>
+                  {renderDescriptionBullets(proj.description)}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : personalInfo.projectSummary ? (
           <div className="pdf-section space-y-2">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-950 border-b border-slate-300 pb-1 font-sans">
               Key Projects
@@ -118,7 +167,7 @@ export const CorporateTemplate = ({ data }) => {
               {personalInfo.projectSummary}
             </p>
           </div>
-        )}
+        ) : null}
 
         {/* 4. Education */}
         {education.length > 0 && (
@@ -162,6 +211,18 @@ export const CorporateTemplate = ({ data }) => {
             </h2>
             <p className="text-xs text-slate-700 leading-relaxed font-sans">
               {certifications.join(' • ')}
+            </p>
+          </div>
+        )}
+
+        {/* 7. Languages */}
+        {languages.length > 0 && (
+          <div className="pdf-section space-y-2">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-950 border-b border-slate-300 pb-1 font-sans">
+              Languages
+            </h2>
+            <p className="text-xs text-slate-700 leading-relaxed font-sans">
+              {languages.join(' • ')}
             </p>
           </div>
         )}

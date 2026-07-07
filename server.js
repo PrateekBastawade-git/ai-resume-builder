@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import Groq from 'groq-sdk';
+import { initDb, createUser, findUserByEmail, createResume, getResumesByUserId, updateResume, deleteResume } from './server/db.js';
+import { hashPassword, comparePassword, generateToken, requireAuth } from './server/auth.js';
 
 // Load environment variables
 dotenv.config();
@@ -104,6 +106,120 @@ app.post('/api/ai', async (req, res) => {
   }
 });
 
+// ─── Authentication Routes ───────────────────────────────────────────────────
+
+// POST /api/auth/signup
+app.post('/api/auth/signup', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+  }
+
+  try {
+    const existing = await findUserByEmail(email);
+    if (existing) {
+      return res.status(400).json({ error: 'An account with this email already exists.' });
+    }
+
+    const passwordHash = await hashPassword(password);
+    const user = await createUser(email, passwordHash);
+    const token = generateToken(user.id);
+
+    res.status(201).json({ user, token });
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ error: 'Server error during signup process.' });
+  }
+});
+
+// POST /api/auth/login
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+
+  try {
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    const isMatch = await comparePassword(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    const token = generateToken(user.id);
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.json({ user: userWithoutPassword, token });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Server error during login process.' });
+  }
+});
+
+// GET /api/auth/me
+app.get('/api/auth/me', requireAuth, (req, res) => {
+  res.json({ user: req.user });
+});
+
+// ─── Resume Routes ───────────────────────────────────────────────────────────
+
+// GET /api/resumes
+app.get('/api/resumes', requireAuth, async (req, res) => {
+  try {
+    const resumes = await getResumesByUserId(req.user.id);
+    res.json(resumes);
+  } catch (error) {
+    console.error('Fetch resumes error:', error);
+    res.status(500).json({ error: 'Server error fetching resumes.' });
+  }
+});
+
+// POST /api/resumes
+app.post('/api/resumes', requireAuth, async (req, res) => {
+  try {
+    const newResume = await createResume(req.user.id, req.body);
+    res.status(201).json(newResume);
+  } catch (error) {
+    console.error('Create resume error:', error);
+    res.status(500).json({ error: 'Server error creating resume.' });
+  }
+});
+
+// PUT /api/resumes/:id
+app.put('/api/resumes/:id', requireAuth, async (req, res) => {
+  try {
+    const updated = await updateResume(req.params.id, req.user.id, req.body);
+    if (!updated) {
+      return res.status(404).json({ error: 'Resume not found or unauthorized.' });
+    }
+    res.json(updated);
+  } catch (error) {
+    console.error('Update resume error:', error);
+    res.status(500).json({ error: 'Server error updating resume.' });
+  }
+});
+
+// DELETE /api/resumes/:id
+app.delete('/api/resumes/:id', requireAuth, async (req, res) => {
+  try {
+    const success = await deleteResume(req.params.id, req.user.id);
+    if (!success) {
+      return res.status(404).json({ error: 'Resume not found or unauthorized.' });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete resume error:', error);
+    res.status(500).json({ error: 'Server error deleting resume.' });
+  }
+});
+
 // Legacy /api/gemini alias — keeps any leftover clients working
 app.post('/api/gemini', (req, res, next) => {
   req.url = '/api/ai';
@@ -120,8 +236,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Backend server running on http://localhost:${PORT}`);
-  console.log(`🤖 AI Provider: Groq (llama-3.3-70b-versatile)`);
-  console.log(`🔑 API Key configured: ${!!process.env.GROQ_API_KEY}`);
+// Start server after database initialization
+initDb().then(() => {
+  app.listen(PORT, () => {
+    console.log(`✅ Backend server running on http://localhost:${PORT}`);
+    console.log(`🤖 AI Provider: Groq (llama-3.3-70b-versatile)`);
+    console.log(`🔑 API Key configured: ${!!process.env.GROQ_API_KEY}`);
+  });
+}).catch(err => {
+  console.error('❌ Failed to initialize server database:', err);
+  process.exit(1);
 });
